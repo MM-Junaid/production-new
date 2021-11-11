@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+	<menuitem name="Checklist Category" id="menu_checklist_category" parent='quality_control.menu_quality_configuration' action="action_quality_checklist_category" sequence="45" groups="base.group_erp_manager,base.group_user"/>
+	<menuitem name="Checklist Criteria" id="menu_checklist_criteria" parent='quality_control.menu_quality_configuration' action="action_quality_checklist_criteria" sequence="50" groups="base.group_erp_manager,base.group_user"/>
+	
+	<menuitem name="Non Moving Products" id="menu_non_moving_products" parent='stock.menu_warehouse_config' action="action_stock_nonmoving_products" sequence="50" groups="base.group_erp_manager,base.group_user"/>
+</odoo>

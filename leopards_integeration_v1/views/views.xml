@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+	
+    <record model="ir.ui.view" id="inherit_shopify_configure_form">
+        <field name="name">inherit.ks.shopify.connector.instance.form</field>
+        <field name="model">ks.shopify.connector.instance</field>
+        <field name="inherit_id" ref="ks_shopify.ks_shopify_connector_instance_view_form" />
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+			<xpath expr="//page[@name='webhooks_conf']" position='after'>
+				<page name='leopards_api_configuration' string="Leopards API Configuration">
+                    <group>
+                        <field name="leopards_tracking_url"/>
+                        <field name="get_cn_url"/>
+                    </group>
+                    <group>
+                        <field name="leopards_api_key"/>
+                        <field name="leopards_api_password" password="1"/>
+                    </group>
+                </page>
+			</xpath>
+		</field>
+	</record>
+	
+	
+	<record model="ir.ui.view" id="inherit_view_sale_order_form">
+        <field name="name">sale.order.form</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form" />
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+			<xpath expr="//button[@name='action_confirm']" position='after'>
+				<button name="get_shipment_details" string="Get Shipment Details" type="object" attrs="{'invisible': [('state', 'not in', ['sale','done'])]}"/>
+			</xpath>
+			<xpath expr="//group[@name='sale_header']" position='after'>
+				<group col="4" colspan="4" name="shipment_details" string='Shipment Details'>
+					<field name="leopards_tracking_url" widget='url' readonly="1"/>
+					<field name="shipment_status" readonly="1"/>
+					<field name="city"/>
+					<field name="leopards_weight" readonly="1"/>
+				</group>
+			</xpath>
+		</field>
+	</record>
+	
+	
+	<record model="ir.ui.view" id="inherit_sale_order_tree_view">
+        <field name="name">sale.order.tree</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_quotation_tree" />
+        <field name="type">tree</field>
+        <field name="arch" type="xml">
+			<xpath expr="//field[@name='state']" position='after'>
+				<field name="shipment_status"/>
+				<field name="city"/>
+				<field name="leopards_tracking_url" widget='url'/>
+			</xpath>
+			<xpath expr="//field[@name='amount_total']" position='before'>
+				<field name="total_weight"/>
+				<field name="leopards_weight"/>
+			</xpath>
+		</field>
+	</record>
+	
+	<record model="ir.ui.view" id="inherit_view_account_move_form">
+        <field name="name">account.move.form</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form" />
+        <field name="type">tree</field>
+        <field name="arch" type="xml">
+			<xpath expr="//group" position='after'>
+				<group col="4" colspan="4" name="shipment_details" string='Shipment Details'>
+					<field name="leopards_tracking_url" widget='url' readonly="1"/>
+					<field name="shipment_status" readonly="1"/>
+					<field name="city" readonly="1"/>
+				</group>
+			</xpath>
+		</field>
+	</record>
+	
+	<record model="ir.ui.view" id="inherit_account_move_view">
+        <field name="name">account.move.tree</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_invoice_tree" />
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+			<xpath expr="//field[@name='state']" position='after'>
+				<field name="shipment_status"/>
+				<field name="city"/>
+				<field name="leopards_tracking_url" widget='url'/>
+			</xpath>
+		</field>
+	</record>
+			
+</odoo>

@@ -1,0 +1,440 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+	
+    <record model="ir.ui.view" id="inherit_view_sale_order_form">
+        <field name="name">sale.order.form</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form" />
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+			<xpath expr="//field[@name='payment_term_id']" position='after'>
+				<field name="qc_by" widget="many2many_tags" readonly="1"/>
+			</xpath>
+			<xpath expr="//field[@name='amount_total']" position='after'>
+				<field name="total_weight"/>
+			</xpath>
+		</field>
+	</record>
+	<record model="ir.ui.view" id="inherit_view_sale_order_tree">
+        <field name="name">sale.order.tree</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_quotation_tree" />
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+			<xpath expr="//field[@name='state']" position='after'>
+				<field name="delivery_status" decoration-success="delivery_status == 'Delivered'" decoration-info="delivery_status == 'Shipped' or delivery_status == 'In Process'" widget="badge"/>
+				<field name="qc_by" widget="many2many_tags"/>
+			</xpath>
+		</field>
+	</record>
+	
+	
+	<record model="ir.ui.view" id="inherit_view_purchase_order_form">
+        <field name="name">purchase.order.form</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form" />
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+			<xpath expr="//field[@name='partner_ref']" position='after'>
+				<field name="qc_by" widget="many2many_tags" readonly="1"/>
+			</xpath>
+		</field>
+	</record>
+	<record model="ir.ui.view" id="inherit_view_purchase_order_tree">
+        <field name="name">purchase.order.tree</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_kpis_tree" />
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+			<xpath expr="//field[@name='state']" position='after'>
+				<field name="qc_by" widget="many2many_tags"/>
+			</xpath>
+		</field>
+	</record>
+	
+	
+	<record model="ir.ui.view" id="inherit_view_account_form">
+        <field name="name">account.account.form</field>
+        <field name="model">account.account</field>
+        <field name="inherit_id" ref="account.view_account_form" />
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+			<xpath expr="//field[@name='group_id']" position='after'>
+				<field name="limit_applicable"/>
+				<field name="limit" attrs="{'invisible':[('limit_applicable','=',False)],'required':[('limit_applicable','=',True)]}"/>
+			</xpath>
+			
+		</field>
+	</record>
+	
+	<record model="ir.ui.view" id="inherit_view_move_form">
+        <field name="name">account.move.form</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form" />
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+			<xpath expr="//group[1]" position='after'>
+			<group>
+				<group>
+					<field name="approval_applicable" invisible="1"/>
+					<field name="approved" invisible="1"/>
+				</group>
+				<group>
+					<field name="approval_date" attrs="{'readonly':True,'invisible':['|',('approved','=',False),('approval_applicable','=',False)]}"/>
+					<field name="approved_by" attrs="{'readonly':True,'invisible':['|',('approved','=',False),('approval_applicable','=',False)]}"/>
+			</group>
+			</group>
+			</xpath>
+			<xpath expr="//button[@name='action_post']" position='after'>
+				<button name="approve_bill" string="Approve" class="oe_highlight" groups="base.group_erp_manager" type="object" attrs="{'invisible': ['|',('approval_applicable', '=', False),('approved','=',True)]}"/>
+			</xpath>
+			
+		</field>
+	</record>
+	
+	<record model="ir.ui.view" id="inherit_view_picking_form">
+        <field name="name">stock.picking.form</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form" />
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+			<xpath expr="//group[1]" position='after'>
+				<group>
+					<field name="delivery_status" readonly="1" attrs="{'invisible':[('sale_id','=',False)]}"/>
+					<field name="sale_id" invisible="1"/>
+				</group>
+			</xpath>
+			<field name="location_dest_id" position="attributes">
+        		<attribute name="attrs">{'readonly':[('state','not in',['draft','confirmed','assigned'])]}</attribute>
+			</field>
+			<xpath expr="//button[@name='button_quality_alert']" position='before'>
+				<button name="set_shipped" string="Shipped" class="oe_highlight" type="object" attrs="{'invisible': ['|','|',('state', '!=', 'done'),('delivery_status','!=','In Process'),('sale_id','=',False)]}"/>
+				<button name="set_delivered" string="Delivered" class="oe_highlight" type="object" attrs="{'invisible': ['|','|',('state', '!=', 'done'),('delivery_status','!=','Shipped'),('sale_id','=',False)]}"/>
+			</xpath>
+			
+			
+		</field>
+	</record>
+	
+	<record model="ir.ui.view" id="inherit_quality_point_view_form">
+        <field name="name">quality.point.form</field>
+        <field name="model">quality.point</field>
+        <field name="inherit_id" ref="quality.quality_point_view_form" />
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+			<xpath expr="//field[@name='user_id']" position='after'>
+				<field name="max_tolerance"/>
+			</xpath>
+			<xpath expr="//page[@name='instructions']" position='before'>
+				<page string='Checklist' name='checklist'>
+					<field name="quality_checklist_ids">
+						<tree>
+							<field name="category_id"/>
+							<field name="criteria_id" required="1"/>
+						</tree>
+						<form>
+							<group col="4" colspan="4">
+								<field name="category_id"/>
+								<field name="criteria_id" required="1"/>
+							</group>
+						</form>
+					</field>
+				</page>
+			</xpath>
+		</field>
+	</record>
+	<record model="ir.ui.view" id="inherit_quality_check_view_form">
+        <field name="name">quality.check.view.form</field>
+        <field name="model">quality.check</field>
+        <field name="inherit_id" ref="quality_control.quality_check_view_form" />
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+			<xpath expr="//field[@name='partner_id']" position='after'>
+				<field name="max_tolerance"/>
+				<field name="total_points"/>
+				<field name="qc_by"  widget="many2many_tags"  readonly="1"/>
+        	</xpath>
+			<xpath expr="//page[@name='notes']" position='before'>
+				<page string='Checklist' name='checklist'>
+					<field name="quality_checklist_ids">
+						<tree>
+							<field name="category_id" readonly="1"/>
+							<field name="criteria_id" readonly="1"/>
+							<field name="decision" readonly="1"/>
+						</tree>
+						<form>
+							<group col="4" colspan="4">
+								<field name="category_id" readonly="1"/>
+								<field name="criteria_id" readonly="1"/>
+								<field name="decision" readonly="1"/>
+							</group>
+						</form>
+					</field>
+				</page>
+			</xpath>
+		</field>
+	</record>
+	
+	<record model="ir.ui.view" id="inherit_quality_check_view_form_small">
+        <field name="name">quality.check.view.form</field>
+        <field name="model">quality.check</field>
+        <field name="inherit_id" ref="quality_control.quality_check_view_form_small" />
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+			<xpath expr="//field[@name='note']" position='attributes'>
+				<attribute name="attrs">{'invisible':True}</attribute>
+			</xpath>
+			<field name="company_id" position="after">
+				<group col="4" colspan="4">
+					<field name="max_tolerance"/>
+					<field name="total_points"/>
+					<field name="qc_by"  widget="many2many_tags"/>
+				</group>
+				<fieldset>
+            		<legend style="border-bottom: 2px solid">Checklist</legend>
+				</fieldset>
+				<field name="quality_checklist_ids" readonly="0" >
+					<tree editable="bottom" delete="false" create="false">
+						<field name="category_id" readonly="1"/>
+						<field name="criteria_id" readonly="1"/>
+						<field name="decision"/>
+					</tree>
+        		</field>
+        	</field>
+		</field>
+	</record>
+	
+	<record model="ir.ui.view" id="quality_checklist_category_form">
+        <field name="name">quality.checklist.category.form</field>
+        <field name="model">quality.checklist.category</field>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+			<form>
+				<group>
+					<field name="name"/>
+				</group>
+			</form>
+		</field>
+	</record>
+	
+	<record model="ir.ui.view" id="quality_checklist_category_tree">
+        <field name="name">quality.checklist.category.tree</field>
+        <field name="model">quality.checklist.category</field>
+        <field name="type">tree</field>
+        <field name="arch" type="xml">
+			<tree>
+				<field name="name"/>
+			</tree>
+		</field>
+	</record>
+	<record model="ir.actions.act_window" id="action_quality_checklist_category">
+        <field name="name">Quality Checklist Category</field>
+        <field name="res_model">quality.checklist.category</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+	<record model="ir.ui.view" id="quality_checklist_criteria_form">
+        <field name="name">quality.checklist.criteria.form</field>
+        <field name="model">quality.checklist.criteria</field>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+			<form>
+				<group>
+					<field name="name"/>
+					<field name="quality_points"/>
+				</group>
+			</form>
+		</field>
+	</record>
+	
+	<record model="ir.ui.view" id="quality_checklist_criteria_tree">
+        <field name="name">quality.checklist.criteria.tree</field>
+        <field name="model">quality.checklist.criteria</field>
+        <field name="type">tree</field>
+        <field name="arch" type="xml">
+			<tree>
+				<field name="name"/>
+				<field name="quality_points"/>
+			</tree>
+		</field>
+	</record>
+	<record model="ir.actions.act_window" id="action_quality_checklist_criteria">
+        <field name="name">Quality Checklist Criteria</field>
+        <field name="res_model">quality.checklist.criteria</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+
+	<record model="ir.ui.view" id="stock_nonmoving_products_form">
+        <field name="name">stock.nonmoving.products.form</field>
+        <field name="model">stock.nonmoving.products</field>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+			<form>
+			<sheet>
+			<header>
+				<button name="get_leopards_shipment_number" string="Get Leopards CN" class="oe_highlight" groups="base.group_erp_manager" type="object"/>
+			</header>
+			<group>
+				<field name="name"/>
+				<field name="no_of_days"/>
+				<field name="no_of_sales"/>
+				<field name="valid_users" widget="many2many_tags"/>
+			</group>
+			</sheet>
+			</form>
+		</field>
+	</record>
+	
+	<record model="ir.ui.view" id="stock_nonmoving_products_tree">
+        <field name="name">stock.nonmoving.products.tree</field>
+        <field name="model">stock.nonmoving.products</field>
+        <field name="type">tree</field>
+        <field name="arch" type="xml">
+			<tree>
+				<field name="name"/>
+				<field name="no_of_days"/>
+				<field name="no_of_sales"/>
+			</tree>
+		</field>
+	</record>
+	<record model="ir.actions.act_window" id="action_stock_nonmoving_products">
+        <field name="name">Non-Moving Products Alert</field>
+        <field name="res_model">stock.nonmoving.products</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+	
+	
+	<record model="ir.ui.view" id="inherit_view_company_form">
+        <field name="name">res.company.form</field>
+        <field name="model">res.company</field>
+        <field name="inherit_id" ref="base.view_company_form" />
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+			<xpath expr="//notebook" position='inside'>
+				<page string='General Configuration' name='configuration'>
+					<group>
+						<field name="auto_schedule_user"/>
+					</group>
+					<group string='Stock Receiving Limits'>
+						<field name="stock_receive_upper_limit"/>
+						<field name="stock_receive_lower_limit"/>
+					</group>
+					<group string='Stock Dispatch Limits'>
+						<field name="stock_dispatch_upper_limit"/>
+						<field name="stock_dispatch_lower_limit"/>
+					</group>
+				</page>
+			</xpath>
+		</field>
+	</record>
+	
+	
+	<record model="ir.ui.view" id="inherit_product_template_only_form_view">
+        <field name="name">product.template.form.inherit</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view" />
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+			<xpath expr="//field[@name='uom_id']" position='before'>
+				<field name="margin"/>
+			</xpath>
+			<!--<xpath expr="//field[@name='description']" position='after'>
+				<field name="website_published"/>
+				<field name="product_published" invisible="1"/>
+			</xpath>-->
+		</field>
+	</record>
+	
+	<!--<record model="ir.ui.view" id="inherit_product_template_tree_view">
+        <field name="name">product.template.tree.inherit</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_tree_view" />
+        <field name="type">tree</field>
+        <field name="arch" type="xml">
+			<xpath expr="//field[@name='activity_exception_decoration']" position='after'>
+				<field name="website_published"/>
+				<field name="product_published" invisible="1"/>
+			</xpath>
+		</field>
+	</record>-->
+	
+	<record model="ir.ui.view" id="inherit_product_template_search_view">
+        <field name="name">product.template.search.inherit</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_search_view" />
+        <field name="type">search</field>
+        <field name="arch" type="xml">
+			<xpath expr="//filter[@name='filter_to_purchase']" position='after'>
+				<filter name="website_published" string="Published"
+                        icon="terp-accessories-archiver"
+                        domain="[('website_published','=','published_web')]"/>
+                <filter name="website_published" string="Unpublished"
+                        icon="terp-accessories-archiver"
+                        domain="[('website_published','=','unpublished')]"/>
+			</xpath>
+		</field>
+	</record>
+	
+	
+	<record model="ir.ui.view" id="inherit_view_stock_quant_tree_editable">
+        <field name="name">stock.quant.tree.inherit</field>
+        <field name="model">stock.quant</field>
+        <field name="inherit_id" ref="stock.view_stock_quant_tree_editable" />
+        <field name="type">tree</field>
+        <field name="arch" type="xml">
+			<xpath expr="//field[@name='product_id']" position='after'>
+				<field name="internal_refrence"/>
+				<field name="barcode"/>
+				<field name="prodcut_brand_id"/>
+			</xpath>
+			<xpath expr="//field[@name='available_quantity']" position='after'>
+				<field name="cost"/>
+			</xpath>
+			<field name="lot_id" position='replace'>
+        	</field>
+			<field name="owner_id" position='replace'>
+        	</field>
+		</field>
+	</record>
+	
+	<record model="ir.ui.view" id="inherit_quant_search_view">
+        <field name="name">stock.quant.search.inherit</field>
+        <field name="model">stock.quant</field>
+        <field name="inherit_id" ref="stock.quant_search_view" />
+        <field name="type">search</field>
+        <field name="arch" type="xml">
+			<xpath expr="//field[@name='owner_id']" position='after'>
+				<field name="internal_refrence"/>
+				<field name="barcode"/>
+				<field name="prodcut_brand_id"/>
+			</xpath>
+			<xpath expr="//filter[@name='productgroup']" position='before'>
+				<filter string='Product Brand' name="prodcut_brand_id" context="{'group_by': 'prodcut_brand_id'}"/>
+			</xpath>
+		</field>
+	</record>
+	
+	 <record id="action_update_prodcut_details_to_shopify" model="ir.actions.server">
+        <field name="name">Update Product Details to Shopify</field>
+        <field name="type">ir.actions.server</field>
+        <field name="model_id" ref="product.model_product_template"/>
+        <field name="binding_model_id" ref="product.model_product_template"/>
+        <field name="state">code</field>
+        <field name="code">
+            action=model.update_product_details_to_shopify()
+        </field>
+    </record>
+	
+	<record id="action_update_prodcut_details_from_shopify" model="ir.actions.server">
+        <field name="name">Update Product Details from Shopify</field>
+        <field name="type">ir.actions.server</field>
+        <field name="model_id" ref="ks_shopify.model_ks_shopify_product_template"/>
+        <field name="binding_model_id" ref="ks_shopify.model_ks_shopify_product_template"/>
+        <field name="state">code</field>
+        <field name="code">
+            action=model.update_product_details_from_shopify()
+        </field>
+    </record>
+			
+</odoo>
