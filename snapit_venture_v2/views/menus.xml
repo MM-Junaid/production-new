@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+	<menuitem name="Non Moving Products" id="menu_non_moving_products" parent='stock.menu_warehouse_config' action="action_stock_nonmoving_products" sequence="50" groups="base.group_erp_manager,base.group_user"/>
+</odoo>

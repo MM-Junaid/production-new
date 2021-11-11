@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_stock_nonmoving_products_group_erp_manager,access_stock_nonmoving_products_group_erp_manager,model_stock_nonmoving_products,base.group_erp_manager,1,1,1,1
+
+access_stock_nonmoving_products_group_user,access_stock_nonmoving_products_group_user,model_stock_nonmoving_products,base.group_user,1,1,1,1

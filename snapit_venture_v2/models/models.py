@@ -20,34 +20,44 @@ class SaleOrder(models.Model):
     delivery_status=fields.Selection([('In Process','In Process'),('Shipped','Shipped'),('Delivered','Delivered')],'Delivery Status',default='In Process',tracking=True)
     my_activity_date_deadline=fields.Datetime()
     qc_by=fields.Many2many('res.users','sale_order_user_rel','order_id','user_id','QC By')
-            
+    total_packing_weight=fields.Float('Total Packing Weight',compute='_cal_total_weight',store=True)
+    shippment_status=fields.Char('Shippment')
+    packing_status=fields.Selection([('In Process','In Process'),('Done','Done')],default='In Process')
+    
+    def set_packing_status(self):
+        self.write({'packing_status':'Done'})
+#     @api.constrains('order_line')
+#     def check_quantity(self):
+#         for each in self:
+#             for line in each.order_line:
+#                 if line.qty_available_today<line.product_uom_qty:
+#                     raise ValidationError('%s not available in stock. Please review before proceed.'%(line.product_id.name))
     
     @api.depends('order_line')
     def _cal_total_weight(self):
         for each in self:
             total_weight=0
+            total_packing_weight=0
             if each.order_line:
                 for line in each.order_line:
-                    total_weight+=line.x_studio_weight
-            each.total_weight=total_weight
-    
+                    total_weight+=line.weight
+                    total_packing_weight+=line.packing_weight
+            each.total_packing_weight=total_packing_weight
+            each.total_weight=total_weight+total_packing_weight
     def action_confirm(self):
+        if not self.packing_status:
+            raise ValidationError('Please set packing status done before confirm the order.')
+        for line in self.order_line:
+            if line.qty_available_today<line.product_uom_qty:
+                raise ValidationError('%s not available in stock. Please review before proceed.'%(line.product_id.name))
         super(SaleOrder, self).action_confirm()
-        model_obj=self.env['ir.model'].search([('model','=',self._name)])
-        user_obj=self.company_id.auto_schedule_user
-        if user_obj:
-            activity_vals={'res_model_id':model_obj.id,
-                           'res_model':self._name,
-                           'res_id':self.id,
-                           'res_name':self.name,
-                           'activity_type_id':4,
-                           'summary':'Dispatch Order',
-                           'note':'Order No.'+str(self.name)+' has been verified. please go for further process',
-                           'date_deadline':date.today() + timedelta(days=5),
-                           'user_id':user_obj.id,
-                           }
-            mail_activity=self.env['mail.activity'].sudo().create(activity_vals) 
-
+        
+class SaleOrderLine(models.Model):
+    _inherit='sale.order.line'
+    weight=fields.Float('Weight',related='product_id.weight',store=True)
+    packing_weight=fields.Float('Packing Weight')
+    packing_done=fields.Boolean('Packing Done',default=False)
+    
 class Account(models.Model):
     _inherit='account.account'
     limit_applicable=fields.Boolean('Limit Applicable')
@@ -60,7 +70,17 @@ class AccountMove(models.Model):
     approved=fields.Boolean('Approved')
     approval_date=fields.Date('Approval Date')
     approved_by=fields.Many2one('res.users','Approved By')
+    total_weight=fields.Float('Total Weight',compute='_cal_total_weight',store=True)
     
+    @api.depends('invoice_line_ids')
+    def _cal_total_weight(self):
+        for each in self:
+            total_weight=0
+            if each.invoice_line_ids:
+                for line in each.invoice_line_ids:
+                    total_weight+=line.weight
+            each.total_weight=total_weight
+            
     @api.depends('invoice_line_ids')
     def _cal_approval_applicable(self):
         for each in self:
@@ -90,7 +110,8 @@ class AccountMoveLine(models.Model):
     _inherit='account.move.line'
     year=fields.Char('Year',compute='_get_year',store=True)
     month=fields.Char('Month',compute='_get_year',store=True)
-     
+    weight=fields.Float('Weight',related='product_id.weight',store=True)
+    
     @api.depends('date')
     def _get_year(self):
         for each in self:
@@ -103,6 +124,7 @@ class AccountMoveLine(models.Model):
 class Picking(models.Model):
     _inherit = "stock.picking"
     delivery_status=fields.Selection([('In Process','In Process'),('Shipped','Shipped'),('Delivered','Delivered')],'Delivery Status',default='In Process',tracking=True)
+    shippment_status=fields.Char('Shippment')
     
     def set_shipped(self):
         self.write({'delivery_status':'Shipped'})
@@ -112,88 +134,11 @@ class Picking(models.Model):
         self.write({'delivery_status':'Delivered'})
         self.sale_id.write({'delivery_status':'Delivered'})
     
-    
-    def button_validate(self):
-        for each in self.check_ids:
-            if each.quality_state=='fail':
-                raise ValidationError("""Sorry you are not allowed to proceed, Quality check for '"""+str(each.product_id.name)+"""' has been failed.""")
-        return super(Picking,self).button_validate()
-    
-class QualityChecklistCategory(models.Model):
-    _name='quality.checklist.category'
-    name=fields.Char('Category',required=True)
+    def re_send(self):
+        self.write({'shippment_status':'Re-Sent'})
+        self.sale_id.write({'shippment_status':'Re-Sent'})
 
-class QualityChecklistCriteria(models.Model):
-    _name='quality.checklist.criteria'
-    name=fields.Char('Criteria',required=True)
-    quality_points=fields.Float('Quality Points',required=True)
     
-class QualityChecklist(models.Model):
-    _name='quality.checklist'
-    category_id=fields.Many2one('quality.checklist.category','Category',required=True)
-    criteria_id=fields.Many2one('quality.checklist.criteria','Criteria')
-    decision=fields.Boolean('Decision')
-    quality_check_id=fields.Many2one('quality.check','Quality Check')
-    quality_point_id=fields.Many2one('quality.point','Quality Point')
-class QualityPoints(models.Model):
-    _inherit='quality.point'
-    quality_checklist_ids=fields.One2many('quality.checklist','quality_point_id','Quality Check List')
-    max_tolerance=fields.Float('Max. Tolerance (%)')
-    
-
-class QualityCheck(models.Model):
-    _inherit='quality.check'
-    quality_checklist_ids=fields.One2many('quality.checklist','quality_check_id','Quality Check List',compute='_get_quality_checklist',store=True)
-    max_tolerance=fields.Float('Max. Tolerance (%)',related='point_id.max_tolerance')
-    total_points=fields.Float('Total Quality Points',compute='_cal_quality_points')
-    qc_by=fields.Many2many('res.users','quality_checks_user_rel','check_id','user_id','QC By')
-    
-    def do_pass(self):
-        res=super(QualityCheck,self).do_pass()
-        if self.picking_id:
-            qc_by_list = []
-            for qc in self.qc_by:
-                qc_by_list.append(qc.id)
-            stock_move_obj=self.env['stock.move'].search([('picking_id','=',self.picking_id.id)])
-            if stock_move_obj.sale_line_id:
-                stock_move_obj.sale_line_id.order_id.write({'qc_by':[(6,0,qc_by_list)]})
-            elif stock_move_obj.purchase_line_id:
-                stock_move_obj.purchase_line_id.order_id.write({'qc_by':[(6,0,qc_by_list)]})
-        return res
-    
-    def do_fail(self):
-        res=super(QualityCheck,self).do_fail()
-        if self.picking_id:
-            qc_by_list = []
-            for qc in self.qc_by:
-                qc_by_list.append(qc.id)
-            stock_move_obj=self.env['stock.move'].search([('picking_id','=',self.picking_id.id)])
-            if stock_move_obj.sale_line_id:
-                stock_move_obj.sale_line_id.order_id.write({'qc_by':[(6,0,qc_by_list)]})
-            elif stock_move_obj.purchase_line_id:
-                stock_move_obj.purchase_line_id.order_id.write({'qc_by':[(6,0,qc_by_list)]})
-        return res
-    
-    @api.depends('point_id')
-    def _get_quality_checklist(self):
-        for each in self:
-            if each.point_id:
-                if not each.quality_checklist_ids:
-                    for checklist in each.point_id.quality_checklist_ids:
-                        checklist_vals={'category_id':checklist.category_id.id,
-                                        'criteria_id':checklist.criteria_id.id,
-                                        'quality_check_id':each.id}
-                        self.env['quality.checklist'].sudo().create(checklist_vals)
-    
-    @api.depends('quality_checklist_ids')
-    def _cal_quality_points(self):
-        for each in self:
-            total_points=0
-            for checklist in each.quality_checklist_ids:
-                if checklist.decision==True:
-                    total_points+=checklist.criteria_id.quality_points
-            each.total_points=total_points
-
 
 class NonMovingProducts(models.Model):
     _name='stock.nonmoving.products'
@@ -298,7 +243,8 @@ class KsProductTemplate(models.Model):
         for tmpl in ks_product_templ_obj:
             product_template=self.env['product.template'].search([('id','=',tmpl.ks_shopify_product_template.id)])
             for product in product_template:
-                product.sudo().write({'barcode':tmpl.ks_barcode})
+                product.sudo().write({'barcode':tmpl.ks_barcode,
+                                      'list_price':tmpl.ks_shopify_regular_price})
             ks_product_variant_obj=self.env['ks.shopify.product.variant'].search([('ks_shopify_product_tmpl_id','=',tmpl.id)])
             if product_template:
                 for ks_product in ks_product_variant_obj:
@@ -307,7 +253,7 @@ class KsProductTemplate(models.Model):
                             varient.sudo().write({'barcode':ks_product.ks_barcode,
                                                   'weight':ks_product.ks_weight,
                                                   'lst_price':ks_product.ks_shopify_regular_price,
-                                              'default_code':ks_product.ks_default_code})
+                                                  'default_code':ks_product.ks_default_code})
     
 class Product(models.Model):
     _inherit='product.product'
@@ -345,7 +291,7 @@ class ProductTemplate(models.Model):
                     for varient in ks_product_varient:
                             varient.sudo().write({'ks_barcode':product.barcode,
                                                   'ks_weight':product.weight,
-                                              'ks_default_code':product.default_code})
+                                                  'ks_default_code':product.default_code})
 
     @api.depends('list_price','standard_price')
     def _cal_margin(self):
@@ -415,7 +361,7 @@ class StockQuant(models.Model):
     _inherit='stock.quant'
     internal_refrence=fields.Char('Internal Refrence',related='product_id.product_tmpl_id.default_code')
     barcode=fields.Char('Barcode',related='product_id.barcode')
-    prodcut_brand_id=fields.Many2one('common.product.brand.ept',related='product_id.product_tmpl_id.product_brand_id',store=True)
+#     prodcut_brand_id=fields.Many2one('common.product.brand.ept',related='product_id.product_tmpl_id.product_brand_id',store=True)
     cost=fields.Float('Cost',compute='_get_cost_price')
     
     @api.depends('value','available_quantity')
