@@ -45,7 +45,7 @@ class KsSaleOrderInherit(models.Model):
                                          help="Checkout Id: Unique checkout ID of Shopify Sale Order")
     ks_sync_states = fields.Boolean(string="Sync Status",
                                     compute='compute_sync_status', readonly=True)
-
+    my_activity_date_deadline=fields.Date('my_activity_date_deadline')
 
     @api.onchange('ks_shopify_instance')
     def _ks_change_domain(self):
@@ -101,8 +101,7 @@ class KsSaleOrderInherit(models.Model):
             shopify_instance = self.env['ks.shopify.connector.instance'].search(
                 [('id', '=', vals.get('ks_shopify_instance'))])
             if shopify_instance and not shopify_instance.ks_default_order_prefix:
-                shopify_prefix = shopify_instance.ks_custom_order_prefix.upper()
-                vals['name'] = shopify_prefix + ' #' + str(vals.get('ks_shopify_order_id'))
+                vals['name'] =str(vals.get('ks_order_name'))
         return super(KsSaleOrderInherit, self).create(vals)
 
     def ks_cancel_sale_order_in_shopify(self):
