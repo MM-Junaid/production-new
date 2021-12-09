@@ -37,6 +37,10 @@
             <!--                       position="before">-->
             <!--                    <field name="ks_discount_amount_value"/>-->
             <!--                </xpath>-->
+			<field name="payment_reference" position="after">
+				<field name="ks_shopify_order_id" options="{'no_open': True}"
+                       attrs="{'invisible': [('ks_shopify_order_id', '=', False)]}"/>
+        	</field>
             <xpath expr="//button[@name='button_cancel']" position="after">
                 <button name="refund_in_shopify" type="object"
                         string="Refund in Shopify" class="oe_highlight"
@@ -45,8 +49,8 @@
                 />
             </xpath>
             <xpath expr="//field[@name='invoice_origin']" position="before">
-                <field name="ks_shopify_order_id" options="{'no_open': True}"
-                       attrs="{'invisible': [('ks_shopify_order_id', '=', False)]}"/>
+                <!--<field name="ks_shopify_order_id" options="{'no_open': True}"
+                       attrs="{'invisible': [('ks_shopify_order_id', '=', False)]}"/>-->
                 <field name="ks_refunded" invisible="1"/>
                 <field name="ks_shopify_order_uni_id" invisible="1"/>
             </xpath>

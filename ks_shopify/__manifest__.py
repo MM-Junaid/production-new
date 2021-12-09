@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 {
-    'name': "Odoo Shopify Connector",
+    'name': "Odoo Shopify Connector new updated souk",
     'summary': """Odoo Shopify Connector helps you automate all Shopify Odoo Integration operations seamlessly with the most 
                   advanced features of Product and Order Synchronization.
        """,

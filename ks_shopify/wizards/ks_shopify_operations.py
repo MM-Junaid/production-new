@@ -85,13 +85,14 @@ class KsShopifyInstanceOperation(models.TransientModel):
     ks_update_product_to_draft = fields.Boolean(string="Draft")
     ks_update_product_to_active = fields.Boolean(string="Active")
     ks_record_ids = fields.Char(string="Record ID", help="Enter shopify id for that particular records")
-    ks_date_filter_before = fields.Datetime(string="Date Before", help="Displays the date before")
-    ks_date_filter_after = fields.Datetime(string="Date After", help="Displays the date after")
+    ks_date_filter_before = fields.Date(string="Date Before", help="Displays the date before")
+    ks_date_filter_after = fields.Date(string="Date After", help="Displays the date after")
     ks_value_example = fields.Char(
         default="For multiple record separate Shopify Id(s) using ','. For example: 111,222,333",
         readonly=True)
     ks_get_specific_import_type = fields.Selection([('import_all', "Import All "),
-                                                    ('record_id', 'Specific Id Filter')],
+                                                    ('record_id', 'Specific Id Filter'),
+                                                    ('date_filter','Date Filter')],
                                                    default="import_all",
                                                    string="Import with",
                                                    help="It include the list of types of import functionalities.")
@@ -422,6 +423,7 @@ class KsShopifyInstanceOperation(models.TransientModel):
                             orders_json_records = self.env['sale.order'].ks_get_all_shopify_orders(
                                 instance=instance, status=order_status, date_after=self.ks_date_filter_after,
                                 date_before=self.ks_date_filter_before)
+                            print ('****************',orders_json_records)
                             if orders_json_records:
                                 _logger.info("Orders fetched from Shopify with %s records." % str(
                                     len(orders_json_records)))

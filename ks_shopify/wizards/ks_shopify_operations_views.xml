@@ -69,15 +69,15 @@
                         <i>For example: 111,222,333</i>
                     </span>
                 </div>
-<!--                <group name="date_filter" string="Date Filters"-->
-<!--                       attrs="{'invisible':['|', ('ks_get_specific_import_type', '!=', 'date_filter'), ('ks_operation_flow', '=', 'odoo_to_shopify')]}">-->
-<!--                    <group>-->
-<!--                        <field name="ks_date_filter_after"/>-->
-<!--                    </group>-->
-<!--                    <group>-->
-<!--                        <field name="ks_date_filter_before"/>-->
-<!--                    </group>-->
-<!--                </group>-->
+               <group name="date_filter" string="Date Filters"
+                      attrs="{'invisible':['|', ('ks_get_specific_import_type', '!=', 'date_filter'), ('ks_operation_flow', '=', 'odoo_to_shopify')]}">
+                    <group>
+                        <field name="ks_date_filter_after"/>
+                   </group>
+                   <group>
+                        <field name="ks_date_filter_before"/>
+                    </group>
+               </group>
                 <footer>
                     <button string="Execute" name="ks_execute_operation" type="object" class="btn-primary"/>
                     <button string="Close" class="btn-primary" special="cancel"/>

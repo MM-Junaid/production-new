@@ -27,7 +27,7 @@ class KsShopifyApiHandler(models.Model):
             
     """
 
-    def _ks_generate_generic_url(self, instance, domain, o_type, id=None, additional_id=None):
+    def _ks_generate_generic_url(self, instance, domain, o_type, id=None, additional_id=None,date_before=None,date_after=None):
         """
         :param instance: Shopify instance ks.shopify.connector.instance()
         :param domain: like products/orders/customers etc type:string
@@ -37,7 +37,9 @@ class KsShopifyApiHandler(models.Model):
         """
         url = instance.ks_shopify_url + '/admin/api/2021-07/' + domain
         if o_type == 'get_all':
-            url = url + '.json' + '?limit=250'
+            url = url + '.json'
+        if date_after and date_before:
+            url=url+'?created_at_min='+str(date_after)+'&created_at_max='+str(date_before)
         elif o_type in ['get'] and type(id) == str:
             ids = len(id.split(",")) > 1
             if ids:
@@ -88,15 +90,21 @@ class KsShopifyApiHandler(models.Model):
 
         """
         try:
-            if not ids:
-                ks_generic_url = self._ks_generate_generic_url(instance, domain, "get_all")
-            elif domain in ['discount_codes', 'variants', 'transactions']:
-                ks_generic_url = self._ks_generate_generic_url(instance, domain, "get", ids)
-            elif domain == 'images':
-                ks_generic_url = self._ks_generate_generic_url(instance, domain, "get", ids,
-                                                               additional_id=additional_id)
+            if date_before and date_after:
+                if not ids:
+                    ks_generic_url = self._ks_generate_generic_url(instance, domain, "get_all",date_before=date_before,date_after=date_after)
+                elif domain in ['discount_codes', 'variants', 'transactions']:
+                    ks_generic_url = self._ks_generate_generic_url(instance, domain, "get", ids)
+                elif domain == 'images':
+                    ks_generic_url = self._ks_generate_generic_url(instance, domain, "get", ids,
+                                                                   additional_id=additional_id)
+                else:
+                    ks_generic_url = self._ks_generate_generic_url(instance, domain, "get", ids)
             else:
-                ks_generic_url = self._ks_generate_generic_url(instance, domain, "get", ids)
+                if not ids:
+                    ks_generic_url = self._ks_generate_generic_url(instance, domain, "get_all")
+                else:
+                    ks_generic_url = self._ks_generate_generic_url(instance, domain, "get", ids)
             all_json_data = []
             if ks_generic_url:
                 # if ids:

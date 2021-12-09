@@ -29,7 +29,8 @@ class KsAdditionalData(models.TransientModel):
     ks_data = fields.Many2one('ks.generic.configuration')
     ks_product_variant_id = fields.Many2one('product.product', string='Product Variant')
     ks_inventory_policy = fields.Selection([('continue', 'Continue'), ('deny', 'Deny')], 'Inventory Policy', default='deny')
-
+    
+   
     def ks_save_additional_data(self):
         return {
             'name': 'Product Data Wizard',
@@ -41,3 +42,9 @@ class KsAdditionalData(models.TransientModel):
             'target': 'new',
             'context': self.env.context,
         }
+    
+#     @api.onchange('ks_update_price')
+#     def update_price(self):
+#         print ('hellloooooooooooo')
+#         if self.ks_update_price:
+#             self.ks_price=self.ks_product_variant_id.lst_price

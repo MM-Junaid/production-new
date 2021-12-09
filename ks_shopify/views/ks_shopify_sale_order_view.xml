@@ -84,8 +84,10 @@
                             <field name="ks_shopify_order_id" attrs="{'invisible': [('ks_shopify_order_id', '=', 0)]}"/>
                             <field name="ks_shopify_draft_order_id"/>
                             <field name="ks_is_draft"/>
-                            <field name="ks_date_created"/>
-                            <field name="ks_date_updated"/>
+                            <field name="ks_date_created" />
+                            <field name="ks_date_updated" />
+							<!--<field name="date_created"/>
+                            <field name="date_updated"/>-->
                         </group>
                         <group>
                             <field name="ks_shopify_status" attrs="{'required': [('ks_shopify_instance', '!=', False)]}"/>

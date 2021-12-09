@@ -63,7 +63,7 @@ class KsQueueManager(models.TransientModel):
                                     'ks_shopify_tags': data.ks_shopify_tags,
                                     'ks_shopify_type_product': data.ks_shopify_type_product,
                                     'ks_shopify_vendor': data.ks_shopify_vendor,
-                                    'ks_price': data.ks_shopify_rp_pricelist.fixed_price,
+                                    'ks_price': data.ks_shopify_regular_price,
                                     'ks_compare_at_price': data.ks_shopify_cp_pricelist.fixed_price,
                                     'ks_product_product': True if len(
                                         data.ks_shopify_variant_ids) > 1 else False,
@@ -136,6 +136,7 @@ class KsQueueManager(models.TransientModel):
                             dict_data = {
                                 # 'ks_data': self.id,
                                 'ks_shopify_instance': rec.ids[0],
+                                'ks_price':self.ks_shopify_product_template.list_price
                             }
                             additional_data = self.env['ks.additional.data'].create(dict_data)
                             self.update({'ks_product_additional_data': [(4, additional_data.id)]})
@@ -145,9 +146,11 @@ class KsQueueManager(models.TransientModel):
                                     # 'ks_data': self.id,
                                     'ks_shopify_instance': rec.ids[0],
                                     'ks_product_variant_id': data.ids[0],
+                                    'ks_price':data.lst_price
                                 }
                                 additional_data = self.env['ks.additional.data'].create(dict_data)
                                 self.update({'ks_product_additional_data': [(4, additional_data.id)]})
+                            
                     self.browse(self.ids[0]).update({
                         'ks_shopify_instance': self.ks_shopify_instance.ids,
                         'ks_push_additional_data': self.ks_push_additional_data,
@@ -183,7 +186,7 @@ class KsQueueManager(models.TransientModel):
                                                                       push=True,
                                                                       generic_wizard=self)
         if self.ks_domain == 'product.template':
-            if self.ks_product_additional_data:
+            if self.ks_product_additional_data and len(self.ks_shopify_product_template)==1:
                 for data in self.ks_product_additional_data:
                     dict_data = {
                         'ks_push_additional_data': self.ks_push_additional_data,
@@ -285,9 +288,9 @@ class KsQueueManager(models.TransientModel):
                                                                           data.ks_shopify_instance,
                                                                           push=True,
                                                                           generic_wizard=generic_data)
-            elif self.env.context.get('active_ids'):
-                ks_res_product = self.env[self.ks_domain].browse(self.env.context.get('active_ids'))
-                self.env[self.ks_domain].ks_manage_shopify_direct_syncing(ks_res_product,
+            else:
+                for product in self.ks_shopify_product_template:
+                    self.env[self.ks_domain].ks_manage_shopify_direct_syncing(product,
                                                                   self.ks_shopify_instance,
                                                                   push=True, )
         if self.ks_domain == 'ks.shopify.product.template':

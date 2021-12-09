@@ -3,6 +3,7 @@
 import json
 import logging
 from odoo.tools import date_utils
+from datetime import timedelta
 
 from odoo import models, fields
 
@@ -441,13 +442,18 @@ class KsQueueManager(models.TransientModel):
                              ('ks_shopify_draft_order_id', '=', record.ks_shopify_id),
                              ('ks_shopify_instance', '=', record.ks_shopify_instance.id),])
                         if order_record_exist:
+                            order_record_exist.order_line.unlink()
                             order_record_exist.ks_shopify_import_order_update(order_data, queue_record=record)
+#                             order_record_exist.ks_date_created=order_record_exist.ks_date_created - timedelta(hours=5)
+#                             order_record_exist.ks_date_updated=order_record_exist.ks_date_updated - timedelta(hours=5)
                         else:
                             if not order_data.get('cancelled_at'):
                                 order_record_exist = order_record_exist.ks_shopify_import_order_create(
                                     order_data, record.ks_shopify_instance, queue_record=record)
                         if order_record_exist:
                             record.ks_record_id = order_record_exist.id
+                            order_record_exist.ks_date_created=order_record_exist.ks_date_created - timedelta(hours=5)
+                            order_record_exist.ks_date_updated=order_record_exist.ks_date_updated - timedelta(hours=5)
 
                     if record.ks_operation == 'odoo_to_shopify':
                         _logger.info("Orders syncing from Odoo to Shopify starts for instance [%s -(%s)]",

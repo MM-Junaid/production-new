@@ -24,7 +24,7 @@ class KsShopifyPaymentGateway(models.Model):
             if order_data and instance:
                 payment_data = order_data.get('payment_gateway_names', False)
                 if payment_data and len(payment_data):
-                    payment_gateway = self.search([('ks_name', '=', payment_data),
+                    payment_gateway = self.search([('ks_name', 'in', payment_data),
                                                    ('ks_shopify_instance', '=', instance.id)])
                     if payment_gateway:
                         # Run update command here

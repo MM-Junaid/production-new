@@ -4,7 +4,7 @@ import logging
 
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
-from datetime import datetime
+from datetime import datetime,timedelta
 
 _logger = logging.getLogger(__name__)
 
@@ -45,8 +45,25 @@ class KsSaleOrderInherit(models.Model):
                                          help="Checkout Id: Unique checkout ID of Shopify Sale Order")
     ks_sync_states = fields.Boolean(string="Sync Status",
                                     compute='compute_sync_status', readonly=True)
-
-
+    my_activity_date_deadline=fields.Date('my_activity_date_deadline')
+    
+    date_created = fields.Datetime('Created On',compute="_get_dates_auto",
+                                      readonly=True,
+                                      help="Created On: Date on which the Shopify Sale Order has been created")
+    date_updated = fields.Datetime('Updated On', compute="_get_dates_auto",
+                                      readonly=True,
+                                      help="Updated On: Date on which the Shopify Sale Order has been last updated")
+    
+    @api.depends('ks_date_created','ks_date_created')
+    def _get_dates_auto(self):
+        for each in self:
+            each.date_created=None
+            each.date_updated=None
+            if each.ks_date_created:
+                each.date_created=each.ks_date_created - timedelta(hours=5)
+            if each.ks_date_updated:
+                each.date_updated=each.ks_date_updated -timedelta(hours=5)
+            
     @api.onchange('ks_shopify_instance')
     def _ks_change_domain(self):
         return {'domain': {'ks_shopify_coupons': [('ks_shopify_instance', 'in', self.ks_shopify_instance.ids)]}}
@@ -94,15 +111,20 @@ class KsSaleOrderInherit(models.Model):
 
                 else:
                     rec.ks_sync_states = False
-
+    
+    
+#     @api.model
+#     def write(self,vals):
+#         order=super(KsSaleOrderInherit,self).write(vals)
+#         
+#         return order
     @api.model
     def create(self, vals):
         if vals.get('ks_shopify_instance') and vals.get('ks_shopify_order_id'):
             shopify_instance = self.env['ks.shopify.connector.instance'].search(
                 [('id', '=', vals.get('ks_shopify_instance'))])
             if shopify_instance and not shopify_instance.ks_default_order_prefix:
-                shopify_prefix = shopify_instance.ks_custom_order_prefix.upper()
-                vals['name'] = shopify_prefix + ' #' + str(vals.get('ks_shopify_order_id'))
+                vals['name'] =str(vals.get('ks_order_name'))
         return super(KsSaleOrderInherit, self).create(vals)
 
     def ks_cancel_sale_order_in_shopify(self):
@@ -208,6 +230,10 @@ class KsSaleOrderInherit(models.Model):
                 })
                 if order_json:
                     order_record = self.create(order_json)
+#                     if order_record.ks_date_created:
+#                         order_record.ks_date_created=order_record.ks_date_created - timedelta(hours=5)
+#                     if order_record.ks_date_updated:
+#                         order_record.ks_date_updated=order_record.ks_date_updated - timedelta(hours=5)
                     self.env['ks.shopify.connector.instance'].ks_shopify_update_the_response(order_data, order_record,
                                                                                              'ks_shopify_order_id')
                     self.env['ks.shopify.logger'].ks_create_odoo_log_param(ks_operation_performed="create",
@@ -259,6 +285,8 @@ class KsSaleOrderInherit(models.Model):
                             'ks_shopify_transaction_id': transaction_id
                         })
                         self.write(order_json)
+#                         self.ks_date_created=self.ks_date_created - timedelta(hours=5)
+#                         self.ks_date_updated=self.ks_date_updated - timedelta(hours=5)
                         self.env['ks.shopify.connector.instance'].ks_shopify_update_the_response(order_data, self,
                                                                                                  'ks_shopify_order_id')
                         self.env['ks.shopify.logger'].ks_create_odoo_log_param(ks_operation_performed="update",
@@ -312,7 +340,13 @@ class KsSaleOrderInherit(models.Model):
             if include:
                 all_retrieved_data = self.env['ks.api.handler'].ks_get_all_data(instance, 'orders', include)
             else:
-                all_retrieved_data = self.env['ks.api.handler'].ks_get_all_data(instance, 'orders')
+                if not date_before:
+#                     date_before=datetime.today().strftime('%Y-%m-%d')
+                    date_before=datetime.today()
+                if not date_after:
+                    date_after=datetime.now() - timedelta(days=2)
+#                     date_after=date_after.strftime('%Y-%m-%d')
+                all_retrieved_data = self.env['ks.api.handler'].ks_get_all_data(instance, 'orders',ids=False, additional_id=False,date_before=date_before,date_after=date_after)
         except Exception as e:
             self.env['ks.shopify.logger'].ks_create_api_log_params(operation_performed="fetch",
                                                                    status="failed",
@@ -727,6 +761,7 @@ class KsSaleOrderInherit(models.Model):
 
     def ks_get_order_lines(self, order_json_data, instance):
         order_lines = []
+        
         for each_record in order_json_data.get('line_items'):
             sale_order_exist = self.search(['|', ('ks_shopify_draft_order_id', '=', order_json_data.get('id')),
                                             ('ks_shopify_order_id', '=', order_json_data.get('id')),
@@ -735,11 +770,10 @@ class KsSaleOrderInherit(models.Model):
             ks_product_product = ks_product_layer.ks_product_product if ks_product_layer.ks_product_product else False
             ks_product_template = ks_product_layer.ks_shopify_product_template if ks_product_layer.ks_shopify_product_template else False
             sale_order_line_exist = False
-            # sale_order_exist.order_line.filtered([('product_id', '=', ks_product_product.id)],
-            #     limit=1)
+            product = self.ks_get_product_ids(instance, each_record)
             if ks_product_product:
                 sale_order_line_exist = self.env['sale.order.line'].search(
-                [('product_id', '=', ks_product_product.id),
+                [('product_id', '=', product.id),
                  ('order_id', '=', sale_order_exist.id)],
                 limit=1)
             elif ks_product_template:
@@ -749,47 +783,124 @@ class KsSaleOrderInherit(models.Model):
                 limit=1)
             product = self.ks_get_product_ids(instance, each_record)
             if product:
-                # ks_price_unit = float((float(each_record.get('price') or 0)/int(each_record.get('quantity') or 1)) or 0)
-                line_items_data = {
-                    'ks_shopify_order_line_id': each_record.get('id'),
-                    'name': each_record.get('title'),
-                    'product_id': product.id,
-                    'product_uom_qty': each_record.get('quantity'),
-                    'price_unit': float(each_record.get('price') or 0),
-                    'product_uom': product.uom_id.id,
-                    'tax_id': [(6, 0, self.get_shopify_tax_ids(order_json_data.get('tax_lines'),
-                                                       instance))],
-                    # 'ks_discount_amount': float((float(each_record.get('price') or 0) - float(each_record.get('total') or 0)) or 0)
-                }
-                ks_sum_amount = 0.00
-                if each_record.get('discount_allocations'):
-                    for discount in each_record.get('discount_allocations'):
-                        ks_sum_amount = ks_sum_amount + float(discount.get('amount'))
-                line_items_data.update({
-                    'ks_discount_amount': float(ks_sum_amount or 0)
-                })
-                # if order_json_data.get('applied_discount').get('value_type') == 'fixed_amount':
-                #     line_items_data.update({
-                #         'ks_discount_amount': float(order_json_data.get('applied_discount').get('amount') or 0)
-                #     })
-                # else:
-                #     total_price = (float(each_record.get('price')) * int(each_record.get('quantity'))) / float(
-                #         order_json_data.get('applied_discount').get('amount') or 1)
-                #     line_items_data.update({
-                #         'ks_discount_amount': total_price
-                #     })
-                if not line_items_data.get("tax_id") and each_record.get('tax_lines'):
-                    line_items_data.update({
-                        "price_tax": each_record.get('tax_lines')[0].get('price')
-                    })
-                if sale_order_line_exist:
-                    order_lines.append((1, sale_order_line_exist.id, line_items_data))
+                if order_json_data.get('refunds'):
+                    for remove_line in order_json_data.get('refunds'):
+                        for refund_line in remove_line.get('refund_line_items'):
+                            if each_record.get('id')!=refund_line.get('line_item_id'):
+            
+                    # ks_price_unit = float((float(each_record.get('price') or 0)/int(each_record.get('quantity') or 1)) or 0)
+                                line_items_data = {
+                                    'ks_shopify_order_line_id': each_record.get('id'),
+                                    'name': each_record.get('title'),
+                                    'product_id': product.id,
+                                    'product_uom_qty': each_record.get('quantity'),
+                                    'price_unit': float(each_record.get('price') or 0),
+                                    'product_uom': product.uom_id.id,
+                                    'tax_id': [(6, 0, self.get_shopify_tax_ids(order_json_data.get('tax_lines'),
+                                                                       instance))],
+                                }
+                                if not line_items_data.get("tax_id") and each_record.get('tax_lines'):
+                                    line_items_data.update({
+                                        "price_tax": each_record.get('tax_lines')[0].get('price')
+                                    })
+                                if not sale_order_line_exist:
+                #                     order_lines.append((1, sale_order_line_exist.id, line_items_data))
+                #                 else:
+                                    order_lines.append((0, 0, line_items_data))
                 else:
-                    order_lines.append((0, 0, line_items_data))
+                    line_items_data = {
+                                    'ks_shopify_order_line_id': each_record.get('id'),
+                                    'name': each_record.get('title'),
+                                    'product_id': product.id,
+                                    'product_uom_qty': each_record.get('quantity'),
+                                    'price_unit': float(each_record.get('price') or 0),
+                                    'product_uom': product.uom_id.id,
+                                    'tax_id': [(6, 0, self.get_shopify_tax_ids(order_json_data.get('tax_lines'),
+                                                                       instance))],
+                                    # 'ks_discount_amount': float((float(each_record.get('price') or 0) - float(each_record.get('total') or 0)) or 0)
+                                }
+                    if not line_items_data.get("tax_id") and each_record.get('tax_lines'):
+                                    line_items_data.update({
+                                        "price_tax": each_record.get('tax_lines')[0].get('price')
+                                    })
+                    if not sale_order_line_exist:
+    #                     order_lines.append((1, sale_order_line_exist.id, line_items_data))
+    #                 else:
+                        order_lines.append((0, 0, line_items_data))
+            #                 ks_sum_amount = 0.00
+            #                 if each_record.get('discount_allocations'):
+            #                     for discount in each_record.get('discount_allocations'):
+            #                         ks_sum_amount = ks_sum_amount + float(discount.get('amount'))
+            #                 line_items_data.update({
+            #                     'ks_discount_amount': float(ks_sum_amount or 0)
+            #                 })
+                            # if order_json_data.get('applied_discount').get('value_type') == 'fixed_amount':
+                            #     line_items_data.update({
+                            #         'ks_discount_amount': float(order_json_data.get('applied_discount').get('amount') or 0)
+                            #     })
+                            # else:
+                            #     total_price = (float(each_record.get('price')) * int(each_record.get('quantity'))) / float(
+                            #         order_json_data.get('applied_discount').get('amount') or 1)
+                            #     line_items_data.update({
+                            #         'ks_discount_amount': total_price
+                            #     })
+#                 if not line_items_data.get("tax_id") and each_record.get('tax_lines'):
+#                     line_items_data.update({
+#                         "price_tax": each_record.get('tax_lines')[0].get('price')
+#                     })
+#                 if not sale_order_line_exist:
+# #                     order_lines.append((1, sale_order_line_exist.id, line_items_data))
+# #                 else:
+#                     order_lines.append((0, 0, line_items_data))
             else:
                 raise TypeError(
                     "Product Does not exist on shopify with shopify ID : %s" % each_record.get("product_id"))
-
+        for discount in order_json_data.get('discount_codes'):
+            if float(order_json_data.get('current_total_discounts'))>0:
+                discount_product=self.env['product.product'].search([('name','=','Discount')])
+                if discount_product:
+                    line_items_data = {
+                        'name': discount.get('code'),
+                        'product_id': discount_product.id,
+                        'product_uom_qty': 1,
+                        'price_unit': -float(order_json_data.get('current_total_discounts')),
+                        'product_uom': discount_product.uom_id.id,                        # 'ks_discount_amount': float((float(each_record.get('price') or 0) - float(each_record.get('total') or 0)) or 0)
+                    }
+            order_lines.append((0, 0, line_items_data))
+#         for remove_line in order_json_data.get('refunds'):
+#             for refund_line in remove_line.get('refund_line_items'):
+#                 for i in order_lines:
+#                     if i[2]['ks_shopify_order_line_id']==refund_line.get('line_item_id'):
+#                         print (order_lines[2])
+#                         del order_lines[2]['ks_shopify_order_line_id']
+#                         print ('ok')
+#             print (order_lines)
+#             print (print (remove_line.get('product_id')))
+#             print ()
+#             for i in order_lines:
+#                 print (i)
+#                 print (i[2]['prodcut_id'])
+#                 print (remove_line.get('product_id'))
+#                 if i[2]['product_id']==remove_line.get('product_id'):
+#                     print ('ok')
+#                     del order_lines[i.get('id')]
+#             remove_list={
+#                     'ks_shopify_order_line_id': remove_line.get('id'),
+#                     'name': remove_line.get('title'),
+#                     'product_id': product.id,
+#                     'product_uom_qty': remove_line.get('quantity'),
+#                     'price_unit': float(each_record.get('price') or 0),
+#                     'product_uom': product.uom_id.id,
+#                     'tax_id': [(6, 0, self.get_shopify_tax_ids(order_json_data.get('tax_lines'),
+#                                                        instance))]}
+#             res=[i for i in order_lines if not (i['id'] == remove_line.get('id'))]
+#             for i in range(len(order_lines)):
+#                 print (order_lines[i]['id'])
+#                 print (remove_line.get('id'))
+#                 if order_lines[i]['id'] == remove_line.get('id'):
+#                     del order_lines[i]
+#             remove_lines.append((0, 0, order_lines))
+#         print ('**********************',res)
         if order_json_data.get('fee_lines'):
             for each_rec in order_json_data.get('fee_lines'):
                 sale_order_exist = self.search([('ks_shopify_order_id', '=', order_json_data.get('id')),
@@ -999,11 +1110,16 @@ class KsSaleOrderInherit(models.Model):
                         [('ks_shopify_instance', '=', instance_id.id),
                          ('ks_shopify_order_id', '=', order_data.get("id"))])
                     if order_record_exist:
+                        order_record_exist.order_line.unlink()
                         order_record_exist.ks_shopify_import_order_update(order_data)
+                        order_record_exist.ks_date_created=order_record_exist.ks_date_created - timedelta(hours=5)
+                        order_record_exist.ks_date_updated=order_record_exist.ks_date_updated - timedelta(hours=5)
                     else:
                         if not order_data.get('cancelled_at'):
-                            order_record_exist.ks_shopify_import_order_create(
+                            new_order=order_record_exist.ks_shopify_import_order_create(
                                 order_data, instance_id)
+                            new_order.ks_date_created=new_order.ks_date_created - timedelta(hours=5)
+                            new_order.ks_date_updated=new_order.ks_date_updated - timedelta(hours=5)
         except Exception as e:
             _logger.info(str(e))
 
